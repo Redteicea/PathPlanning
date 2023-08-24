@@ -1,3 +1,10 @@
+"""
+局部路径规划
+动态窗口法路径规划实现
+@author: HowGreat
+"""
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 import copy
