@@ -29,7 +29,7 @@ if __name__ == "__main__":
     Y = np.concatenate((np.array([state_t0[i] for i in range(6) if i % 2 != 0]),
                         np.array([state_t1[i] for i in range(6) if i % 2 != 0])))
 
-    # 矩阵T表示
+    # 矩阵T表示，5次多项式，解【位置】【速度】【加速度】
     T = np.matrix([
         [t0 ** 5, t0 ** 4, t0 ** 3, t0 ** 2, t0, 1],
         [5 * t0 ** 4, 4 * t0 ** 3, 3 * t0 ** 2, 2 * t0, 1, 0],
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     # A=A.T
     # B=B.T
 
-    # # 解法2
+    # # 解法2，求方程组的解，T*A=X，A为待求解的量
     A = np.linalg.solve(T, X)
     B = np.linalg.solve(T, Y)
 

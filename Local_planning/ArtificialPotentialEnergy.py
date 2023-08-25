@@ -20,7 +20,7 @@ def main():
     Pg = np.array([99, d / 2, 0, 0]) # 目标位置
 
     # 障碍物位置
-    Pobs = np.array([
+    obs_position = np.array([
         [15, 7 / 4, 0, 0],
         [30, - 3 / 2, 0, 0],
         [45, 3 / 2, 0, 0],
@@ -28,7 +28,7 @@ def main():
         [80, 3/2, 0, 0]])
 
     n=1
-    P = np.vstack((Pg,Pobs))  # 将目标位置和障碍物位置合放在一起
+    P = np.vstack((Pg, obs_position))  # 将目标位置和障碍物位置合放在一起
     Eta_att = 5  # 引力的增益系数
     Eta_rep_ob = 15  # 斥力的增益系数
     Eta_rep_edge = 50   # 道路边界斥力的增益系数
@@ -44,8 +44,7 @@ def main():
     delta = np.zeros((num,2)) # 保存车辆当前位置与障碍物的方向向量，方向指向车辆；以及保存车辆当前位置与目标点的方向向量，方向指向目标点
     dists = [] # 保存车辆当前位置与障碍物的距离以及车辆当前位置与目标点的距离
     unite_vec = np.zeros((num,2)) #  保存车辆当前位置与障碍物的单位方向向量，方向指向车辆；以及保存车辆当前位置与目标点的单位方向向量，方向指向目标点
-
-    F_rep_ob = np.zeros((len(Pobs),2))  # 存储每一个障碍到车辆的斥力,带方向
+    F_rep_ob = np.zeros((len(obs_position), 2))  # 存储每一个障碍到车辆的斥力,带方向
     v=np.linalg.norm(P0[2:4]) # 设车辆速度为常值
 
 
@@ -62,30 +61,30 @@ def main():
         # print(count)
         # count+=1
         # 计算车辆当前位置与障碍物的单位方向向量
-        for j in range(len(Pobs)):
-            delta[j] = Pi[0:2] - Pobs[j, 0:2]
-            dists.append(np.linalg.norm(delta[j]))
-            unite_vec[j] = delta[j] / dists[j]
+        for j in range(len(obs_position)):
+            delta[j] = Pi[0:2] - obs_position[j, 0:2]
+            dists.append(np.linalg.norm(delta[j]))  # np.linalg.norm() # 求范数，默认是L2范数，在这里是两点的距离
+            unite_vec[j] = delta[j] / dists[j]  # 相对位置的单位向量
         # 计算车辆当前位置与目标的单位方向向量
-        delta[len(Pobs)] = Pg[0:2] - Pi[0:2]
-        dists.append(np.linalg.norm(delta[len(Pobs)]))
-        unite_vec[len(Pobs)] = delta[len(Pobs)] / dists[len(Pobs)]
+        delta[len(obs_position)] = Pg[0:2] - Pi[0:2]
+        dists.append(np.linalg.norm(delta[len(obs_position)]))
+        unite_vec[len(obs_position)] = delta[len(obs_position)] / dists[len(obs_position)]
 
         ## 计算引力
-        F_att = Eta_att * dists[len(Pobs)] * unite_vec[len(Pobs)]
+        F_att = Eta_att * dists[len(obs_position)] * unite_vec[len(obs_position)]
 
         ## 计算斥力
         # 在原斥力势场函数增加目标调节因子（即车辆至目标距离），以使车辆到达目标点后斥力也为0
-        for j in range(len(Pobs)):
+        for j in range(len(obs_position)):
             if dists[j] >= d0:
                 F_rep_ob[j] = np.array([0, 0])
             else:
                 # 障碍物的斥力1，方向由障碍物指向车辆
-                F_rep_ob1_abs = Eta_rep_ob * (1 / dists[j] - 1 / d0) * (dists[len(Pobs)]) ** n / dists[j] ** 2  # 斥力大小
+                F_rep_ob1_abs = Eta_rep_ob * (1 / dists[j] - 1 / d0) * (dists[len(obs_position)]) ** n / dists[j] ** 2  # 斥力大小
                 F_rep_ob1 = F_rep_ob1_abs * unite_vec[j]  # 斥力向量
                 # 障碍物的斥力2，方向由车辆指向目标点
-                F_rep_ob2_abs = n / 2 * Eta_rep_ob * (1 / dists[j] - 1 / d0) ** 2 * (dists[len(Pobs)]) ** (n - 1)  # 斥力大小
-                F_rep_ob2 = F_rep_ob2_abs * unite_vec[len(Pobs)]  # 斥力向量
+                F_rep_ob2_abs = n / 2 * Eta_rep_ob * (1 / dists[j] - 1 / d0) ** 2 * (dists[len(obs_position)]) ** (n - 1)  # 斥力大小
+                F_rep_ob2 = F_rep_ob2_abs * unite_vec[len(obs_position)]  # 斥力向量
                 # 改进后的障碍物合斥力计算
                 F_rep_ob[j] = F_rep_ob1 + F_rep_ob2
 
@@ -100,10 +99,10 @@ def main():
             F_rep_edge = np.array([0, Eta_rep_edge * v * (np.exp(Pi[1] - d / 2))])
 
         ## 计算合力和方向
-        F_rep = np.sum(F_rep_ob, axis=0) + F_rep_edge
+        F_rep = np.sum(F_rep_ob, axis=0) + F_rep_edge   # 障碍物斥力 + 道路边界斥力
+        F_sum = F_att + F_rep   # 合力 = 引力 + 斥力
 
-        F_sum = F_att + F_rep
-
+        # 受合外力作用的单位速度
         UnitVec_Fsum = 1 / np.linalg.norm(F_sum) * F_sum
         # 计算车的下一步位置
         Pi = copy.deepcopy(Pi + len_step * UnitVec_Fsum)
@@ -130,19 +129,15 @@ def main():
                                                                            - d / 2 - W / 2]), 'b')
         # 画分界线
         plt.plot(np.array([- 5, len_line]), np.array([0, 0]), 'w--')
-
         plt.plot(np.array([- 5, len_line]), np.array([d, d]), 'w')
-
         plt.plot(np.array([- 5, len_line]), np.array([- d, - d]), 'w')
 
         # 设置坐标轴显示范围
         # plt.axis('equal')
         # plt.gca().set_aspect('equal')
         # 绘制路径
-        plt.plot(Pobs[:, 0], Pobs[:, 1], 'ro')  # 障碍物位置
-
+        plt.plot(obs_position[:, 0], obs_position[:, 1], 'ro')  # 障碍物位置
         plt.plot(Pg[0], Pg[1], 'gv')  # 目标位置
-
         plt.plot(P0[0], P0[1], 'bs')  # 起点位置
         # plt.cla()
         plt.plot(path[0:i, 0], path[0:i, 1], 'k')  # 路径点
